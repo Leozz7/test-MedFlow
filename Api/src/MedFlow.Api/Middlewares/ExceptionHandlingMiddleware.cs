@@ -7,6 +7,14 @@ namespace MedFlow.Api.Middlewares;
 /// <summary>
 /// Intercepta exceções de domínio e de validação e as converte
 /// em respostas HTTP padronizadas (RFC 7807 – Problem Details).
+///
+/// Mapeamento:
+///   UnauthorizedException  → 401 Unauthorized
+///   NotFoundException      → 404 Not Found
+///   ConflictException      → 409 Conflict
+///   ValidationException    → 400 Bad Request  (com dicionário de erros por campo)
+///   DomainException        → 400 Bad Request  (violação de regra de negócio genérica)
+///   Exception              → 500 Internal Server Error
 /// </summary>
 public class ExceptionHandlingMiddleware
 {
@@ -29,8 +37,18 @@ public class ExceptionHandlingMiddleware
         }
         catch (UnauthorizedException ex)
         {
-            _logger.LogWarning("Tentativa de acesso não autorizado: {Message}", ex.Message);
-            await WriteJsonResponse(context, HttpStatusCode.Unauthorized, "Unauthorized", ex.Message);
+            _logger.LogWarning("Acesso não autorizado: {Message}", ex.Message);
+            await WriteProblemDetails(context, HttpStatusCode.Unauthorized, "Unauthorized", ex.Message);
+        }
+        catch (NotFoundException ex)
+        {
+            _logger.LogWarning("Recurso não encontrado: {Message}", ex.Message);
+            await WriteProblemDetails(context, HttpStatusCode.NotFound, "Not Found", ex.Message);
+        }
+        catch (ConflictException ex)
+        {
+            _logger.LogWarning("Conflito de recurso: {Message}", ex.Message);
+            await WriteProblemDetails(context, HttpStatusCode.Conflict, "Conflict", ex.Message);
         }
         catch (FluentValidation.ValidationException ex)
         {
@@ -47,7 +65,7 @@ public class ExceptionHandlingMiddleware
 
             var body = JsonSerializer.Serialize(new
             {
-                title = "One or more validation errors occurred.",
+                title = "Erro de validação.",
                 status = 400,
                 errors
             });
@@ -56,18 +74,19 @@ public class ExceptionHandlingMiddleware
         }
         catch (DomainException ex)
         {
-            _logger.LogWarning("Erro de negócio: {Message}", ex.Message);
-            await WriteJsonResponse(context, HttpStatusCode.BadRequest, "Business Rule Violation", ex.Message);
+            _logger.LogWarning("Violação de regra de negócio: {Message}", ex.Message);
+            await WriteProblemDetails(context, HttpStatusCode.BadRequest, "Bad Request", ex.Message);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Erro inesperado.");
-            await WriteJsonResponse(context, HttpStatusCode.InternalServerError,
+            _logger.LogError(ex, "Erro inesperado na requisição {Method} {Path}",
+                context.Request.Method, context.Request.Path);
+            await WriteProblemDetails(context, HttpStatusCode.InternalServerError,
                 "Internal Server Error", "Ocorreu um erro inesperado. Tente novamente mais tarde.");
         }
     }
 
-    private static async Task WriteJsonResponse(
+    private static async Task WriteProblemDetails(
         HttpContext context,
         HttpStatusCode statusCode,
         string title,

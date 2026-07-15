@@ -19,12 +19,9 @@ public class UpdateUserHandler : IRequestHandler<UpdateUserCommand, UserDto>
     public async Task<UserDto> Handle(UpdateUserCommand request, CancellationToken cancellationToken)
     {
         var user = await _userRepository.GetByIdAsync(request.Id, cancellationToken);
-        if (user == null)
-            throw new DomainException($"User with id {request.Id} not found.");
+        if (user is null)
+            throw new NotFoundException(nameof(user), request.Id);
 
-        // Atualiza as propriedades. NOTA: em um sistema real poderíamos permitir alterar apenas propriedades específicas
-        // Aqui atualizaremos apenas os metadados (como não temos setters publicos, em teoria deveríamos ter um método no User para update)
-        // Oops, Clean Architecture: O entity User não possui setters. Vamos criar um método Update(name, email, role) na Entity!
         user.Update(request.Name, request.Email, request.Role);
 
         _userRepository.Update(user);
@@ -39,3 +36,4 @@ public class UpdateUserHandler : IRequestHandler<UpdateUserCommand, UserDto>
         };
     }
 }
+
