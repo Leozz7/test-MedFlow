@@ -1,0 +1,1 @@
+FROM --platform=$BUILDPLATFORM AS base

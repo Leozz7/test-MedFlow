@@ -90,17 +90,17 @@ O banco de dados deve suportar as seguintes entidades principais:
 ```csharp
 public enum UserRole
 {
-    Attendant,
-    Doctor
+    ATTENDANT,
+    DOCTOR
 }
 
 public enum ExamStatus
 {
-    Pending,
-    Processing,
-    Done,
-    Error,
-    Reported
+    PENDING,
+    PROCESSING,
+    DONE,
+    ERROR,
+    REPORTED
 }
 ```
 
