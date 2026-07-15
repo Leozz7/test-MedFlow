@@ -5,6 +5,7 @@ using MedFlow.Application.Features.Users.Commands.UpdateUser;
 using MedFlow.Application.Features.Users.Commands.DeleteUser;
 using MedFlow.Application.Features.Users.Queries.GetUsers;
 using MedFlow.Application.Features.Users.Queries.GetUserById;
+using MedFlow.Application.Features.Users.Commands.CreateUser;
 
 namespace MedFlow.Api.Controllers;
 

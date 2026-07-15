@@ -1,6 +1,9 @@
+using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.IdentityModel.Tokens;
 
 namespace MedFlow.Api.Extensions;
 
@@ -15,11 +18,61 @@ public static class ServiceCollectionExtensions
             });
 
         services.AddEndpointsApiExplorer();
+
+        // Swagger
         services.AddSwaggerGen();
 
         services.AddHealthChecks();
-        
-        // Remove RabbitMQ for now until configured
+
+        // JWT Authentication
+        var jwtKey = configuration["Jwt:Key"]
+                     ?? throw new InvalidOperationException("Jwt:Key não configurado.");
+
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+                    ValidateIssuer = true,
+                    ValidIssuer = configuration["Jwt:Issuer"],
+                    ValidateAudience = true,
+                    ValidAudience = configuration["Jwt:Audience"],
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.Zero
+                };
+
+                // Retorna 401 em JSON padronizado
+                options.Events = new JwtBearerEvents
+                {
+                    OnChallenge = async context =>
+                    {
+                        context.HandleResponse();
+                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        context.Response.ContentType = "application/problem+json";
+                        await context.Response.WriteAsJsonAsync(new
+                        {
+                            title = "Unauthorized",
+                            status = 401,
+                            detail = "Token ausente ou inválido."
+                        });
+                    },
+                    OnForbidden = async context =>
+                    {
+                        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                        context.Response.ContentType = "application/problem+json";
+                        await context.Response.WriteAsJsonAsync(new
+                        {
+                            title = "Forbidden",
+                            status = 403,
+                            detail = "Você não tem permissão para acessar este recurso."
+                        });
+                    }
+                };
+            });
+
+        services.AddAuthorization();
 
         return services;
     }

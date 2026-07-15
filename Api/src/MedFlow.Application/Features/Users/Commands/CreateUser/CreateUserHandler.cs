@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using MediatR;
 using MedFlow.Domain.Entities;
+using MedFlow.Domain.Exceptions;
 using MedFlow.Application.Interfaces.Repositories;
 using MedFlow.Application.Interfaces.Auth;
 
@@ -23,10 +24,7 @@ public class CreateUserHandler : IRequestHandler<CreateUserCommand, Guid>
     {
         var emailExists = await _userRepository.ExistsByEmailAsync(request.Email, cancellationToken);
         if (emailExists)
-        {
-            // Poderíamos lançar uma CustomException de Application, mas simplificaremos
-            throw new Exception("O e-mail informado já está em uso.");
-        }
+            throw new ConflictException("O e-mail informado já está em uso.");
 
         var passwordHash = _passwordHasher.HashPassword(request.Password);
 
@@ -38,3 +36,4 @@ public class CreateUserHandler : IRequestHandler<CreateUserCommand, Guid>
         return user.Id;
     }
 }
+

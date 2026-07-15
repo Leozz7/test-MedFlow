@@ -18,10 +18,11 @@ public class DeleteUserHandler : IRequestHandler<DeleteUserCommand>
     public async Task Handle(DeleteUserCommand request, CancellationToken cancellationToken)
     {
         var user = await _userRepository.GetByIdAsync(request.Id, cancellationToken);
-        if (user == null)
-            throw new DomainException($"User with id {request.Id} not found.");
+        if (user is null)
+            throw new NotFoundException(nameof(user), request.Id);
 
         _userRepository.Remove(user);
         await _userRepository.SaveChangesAsync(cancellationToken);
     }
 }
+

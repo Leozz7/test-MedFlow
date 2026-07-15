@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using MediatR;
 using MedFlow.Application.Interfaces.Repositories;
 using MedFlow.Application.Features.Users.DTOs;
+using MedFlow.Domain.Exceptions;
 
 namespace MedFlow.Application.Features.Users.Queries.GetUserById;
 
@@ -20,8 +21,8 @@ public class GetUserByIdHandler : IRequestHandler<GetUserByIdQuery, UserDto>
     {
         var user = await _userRepository.GetByIdAsync(request.Id, cancellationToken);
 
-        if (user == null)
-            throw new Exception("Usuário não encontrado.");
+        if (user is null)
+            throw new NotFoundException(nameof(user), request.Id);
 
         return new UserDto
         {
@@ -32,3 +33,4 @@ public class GetUserByIdHandler : IRequestHandler<GetUserByIdQuery, UserDto>
         };
     }
 }
+
