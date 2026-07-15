@@ -13,7 +13,9 @@ public class MedicalExam : BaseEntity
     public string? Report { get; private set; }
 
     // Construtor vazio para o EF Core
+#pragma warning disable CS8618
     protected MedicalExam() { }
+#pragma warning restore CS8618
 
     public MedicalExam(string fileName)
     {

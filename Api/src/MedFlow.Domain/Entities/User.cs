@@ -13,7 +13,9 @@ public class User : BaseEntity
     public UserRole Role { get; private set; }
 
     // Construtor vazio para o EF Core
+#pragma warning disable CS8618
     protected User() { }
+#pragma warning restore CS8618
 
     public User(string name, string email, string passwordHash, UserRole role)
     {
@@ -38,5 +40,18 @@ public class User : BaseEntity
             throw new DomainException("A nova senha não pode ser vazia.");
 
         PasswordHash = newPasswordHash;
+    }
+
+    public void Update(string name, string email, UserRole role)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new DomainException("O nome não pode ser vazio.");
+
+        if (string.IsNullOrWhiteSpace(email))
+            throw new DomainException("O e-mail não pode ser vazio.");
+
+        Name = name;
+        Email = email;
+        Role = role;
     }
 }
