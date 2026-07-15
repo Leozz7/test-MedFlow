@@ -1,3 +1,4 @@
+using MedFlow.Api.Middlewares;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 namespace MedFlow.Api.Extensions;
@@ -7,13 +8,16 @@ public static class ApplicationBuilderExtensions
     public static WebApplication UseApiPipeline(this WebApplication app)
     {
         app.UseForwardedHeaders();
+
+        // Tratamento global de exceções (deve vir antes dos demais middlewares)
+        app.UseMiddleware<ExceptionHandlingMiddleware>();
+
         app.UseHttpsRedirection();
         app.UseCors("MedFlowPolicy");
         app.UseRateLimiter();
-        
-        // Ativar quando tivermos Authentication
-        // app.UseAuthentication();
-        // app.UseAuthorization();
+
+        app.UseAuthentication();
+        app.UseAuthorization();
 
         app.MapControllers().RequireRateLimiting("fixed");
 
@@ -27,11 +31,11 @@ public static class ApplicationBuilderExtensions
 
     private static void MapCustomHealthChecks(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapHealthChecks("/health/live", new HealthCheckOptions 
-        { 
+        endpoints.MapHealthChecks("/health/live", new HealthCheckOptions
+        {
             Predicate = _ => false
         });
-        
+
         endpoints.MapHealthChecks("/health/ready", new HealthCheckOptions());
     }
 }
