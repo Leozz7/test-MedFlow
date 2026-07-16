@@ -6,7 +6,7 @@ namespace MedFlow.Domain.Common;
 
 public abstract class BaseEntity : IAuditableEntity
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
 
     public DateTime Created { get; set; } = DateTime.UtcNow;
     
