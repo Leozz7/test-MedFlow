@@ -1,6 +1,0 @@
-- `[ ]` Configurar `appsettings.json` com chaves Jwt e Security
-- `[ ]` Criar e injetar `TokenService` implementando `ITokenService`
-- `[ ]` Configurar `AddAuthentication` e `AddJwtBearer` em `ServiceCollectionExtensions.cs`
-- `[ ]` Ativar `app.UseAuthentication()` em `ApplicationBuilderExtensions.cs`
-- `[ ]` Finalizar implementação do `LoginHandler`
-- `[ ]` Adaptar `AuthController` para a query de login

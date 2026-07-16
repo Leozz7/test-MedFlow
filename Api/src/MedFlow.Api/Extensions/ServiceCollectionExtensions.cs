@@ -25,7 +25,23 @@ public static class ServiceCollectionExtensions
         services.AddEndpointsApiExplorer();
 
         // Swagger
-        services.AddSwaggerGen();
+        services.AddSwaggerGen(c =>
+        {
+            c.SwaggerDoc("v1", new Microsoft.OpenApi.OpenApiInfo { Title = "MedFlow API", Version = "v1" });
+
+            c.AddSecurityDefinition("bearer", new Microsoft.OpenApi.OpenApiSecurityScheme
+            {
+                Type = Microsoft.OpenApi.SecuritySchemeType.Http,
+                Scheme = "bearer",
+                BearerFormat = "JWT",
+                Description = "JWT Authorization header usando o esquema Bearer. Exemplo: \"{token}\""
+            });
+
+            c.AddSecurityRequirement(document => new Microsoft.OpenApi.OpenApiSecurityRequirement
+            {
+                [new Microsoft.OpenApi.OpenApiSecuritySchemeReference("bearer", document)] = new List<string>()
+            });
+        });
 
         services.AddHealthChecks()
             .AddCheck<PostgresHealthCheck>("PostgreSQL")
