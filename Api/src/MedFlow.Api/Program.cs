@@ -2,6 +2,7 @@ using MedFlow.Api.Extensions;
 using MedFlow.Application;
 using MedFlow.Infrastructure;
 using MedFlow.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,5 +28,32 @@ var app = builder.Build();
 
 // Pipeline
 app.UseApiPipeline();
+
+// Apply migrations and seed database on startup
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("Program");
+    try
+    {
+        logger.LogInformation("Applying pending database migrations...");
+        var context = services.GetRequiredService<ApplicationDbContext>();
+        
+        if (context.Database.IsNpgsql())
+        {
+            await context.Database.MigrateAsync();
+            logger.LogInformation("Database migrations applied successfully.");
+        }
+
+        var passwordHasher = services.GetRequiredService<MedFlow.Application.Common.Security.IPasswordHasher>();
+        var configuration = services.GetRequiredService<IConfiguration>();
+        
+        await ApplicationDbContextSeed.SeedDefaultUserAsync(context, passwordHasher, configuration, logger);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "An error occurred during database migration or seeding.");
+    }
+}
 
 app.Run();

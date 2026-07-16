@@ -1,0 +1,75 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: medflow-db
+    environment:
+      - POSTGRES_DB=medflow_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d medflow_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: medflow-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672" # Management UI
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    image: medflow-api:latest
+    build:
+      context: ./Api
+      dockerfile: Dockerfile
+    container_name: medflow-api
+    ports:
+      - "5001:8080" # Mapeia a porta local 5001 para a porta 8080 do container
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=medflow_db;Username=postgres;Password=postgres
+      - RabbitMQ__HostName=rabbitmq
+      - RabbitMQ__Port=5672
+      - RabbitMQ__UserName=guest
+      - RabbitMQ__Password=guest
+      - Security__PasswordPepper=MeuPepperSuperSecreto123!
+      - Security__Argon2MemoryCostKB=65536
+      - Security__Argon2TimeCost=3
+      - Security__Argon2Lanes=4
+      - Jwt__Key=MedFlowSuperSecretKey_1234567890_MuitoGrande
+      - Jwt__Issuer=MedFlowApi
+      - Jwt__Audience=MedFlowUsers
+      - Seed__AdminEmail=admin@medflow.com
+      - Seed__AdminPassword=AdminPassword123!
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: rebuild
+          path: ./Api
+          ignore:
+            - bin/
+            - obj/
+            - src/MedFlow.Tests/
+            - src/*/bin/
+            - src/*/obj/
+
+volumes:
+  postgres_data:
