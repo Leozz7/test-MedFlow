@@ -45,12 +45,55 @@ public class ExamProcessingBackgroundService : BackgroundService
             _connection = _connectionFactory.CreateConnection();
             _channel = _connection.CreateModel();
 
+            // 1. Declarar Dead Letter Exchange (DLX) e Dead Letter Queue (DLQ)
+            _channel.ExchangeDeclare(
+                exchange: "exam-processing-dlx",
+                type: ExchangeType.Direct,
+                durable: true,
+                autoDelete: false,
+                arguments: null);
+
             _channel.QueueDeclare(
-                queue: "exam-processing",
+                queue: "exam-processing-dlq",
                 durable: true,
                 exclusive: false,
                 autoDelete: false,
                 arguments: null);
+
+            _channel.QueueBind(
+                queue: "exam-processing-dlq",
+                exchange: "exam-processing-dlx",
+                routingKey: "exam-processing-dlq-routing-key",
+                arguments: null);
+
+            // 2. Argumentos para vincular a fila principal à DLX
+            var arguments = new System.Collections.Generic.Dictionary<string, object>
+            {
+                { "x-dead-letter-exchange", "exam-processing-dlx" },
+                { "x-dead-letter-routing-key", "exam-processing-dlq-routing-key" }
+            };
+
+            try
+            {
+                _channel.QueueDeclare(
+                    queue: "exam-processing",
+                    durable: true,
+                    exclusive: false,
+                    autoDelete: false,
+                    arguments: arguments);
+            }
+            catch (global::RabbitMQ.Client.Exceptions.OperationInterruptedException ex) when (ex.ShutdownReason?.ReplyCode == 406)
+            {
+                _logger.LogWarning("Fila 'exam-processing' já existe com argumentos incompatíveis. Recriando fila...");
+                _channel = _connection.CreateModel();
+                _channel.QueueDelete("exam-processing");
+                _channel.QueueDeclare(
+                    queue: "exam-processing",
+                    durable: true,
+                    exclusive: false,
+                    autoDelete: false,
+                    arguments: arguments);
+            }
 
             var consumer = new AsyncEventingBasicConsumer(_channel);
             consumer.Received += async (model, ea) =>
@@ -58,12 +101,25 @@ public class ExamProcessingBackgroundService : BackgroundService
                 var body = ea.Body.ToArray();
                 var examIdString = Encoding.UTF8.GetString(body);
 
-                if (Guid.TryParse(examIdString, out var examId))
+                try
                 {
-                    await ProcessExamAsync(examId, stoppingToken);
-                }
+                    if (Guid.TryParse(examIdString, out var examId))
+                    {
+                        await ProcessExamAsync(examId, stoppingToken);
+                    }
+                    else
+                    {
+                        throw new ArgumentException($"Id de exame inválido recebido no corpo da mensagem: {examIdString}");
+                    }
 
-                _channel.BasicAck(ea.DeliveryTag, false);
+                    _channel.BasicAck(ea.DeliveryTag, false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Erro no processamento da mensagem do exame {ExamIdString}. Enviando para DLQ.", examIdString);
+                    // Nack com requeue = false envia automaticamente para a DLX configurada
+                    _channel.BasicNack(ea.DeliveryTag, multiple: false, requeue: false);
+                }
             };
 
             _channel.BasicConsume(

@@ -4,6 +4,8 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
+using MedFlow.Infrastructure.Persistence;
+using MedFlow.Infrastructure.RabbitMQ;
 
 namespace MedFlow.Api.Extensions;
 
@@ -25,7 +27,9 @@ public static class ServiceCollectionExtensions
         // Swagger
         services.AddSwaggerGen();
 
-        services.AddHealthChecks();
+        services.AddHealthChecks()
+            .AddCheck<PostgresHealthCheck>("PostgreSQL")
+            .AddCheck<RabbitMQHealthCheck>("RabbitMQ");
 
         // JWT Authentication
         var jwtKey = configuration["Jwt:Key"]
@@ -43,7 +47,9 @@ public static class ServiceCollectionExtensions
                     ValidateAudience = true,
                     ValidAudience = configuration["Jwt:Audience"],
                     ValidateLifetime = true,
-                    ClockSkew = TimeSpan.Zero
+                    ClockSkew = TimeSpan.Zero,
+                    RoleClaimType = "role",
+                    NameClaimType = "sub"
                 };
 
                 // Retorna 401 em JSON padronizado
