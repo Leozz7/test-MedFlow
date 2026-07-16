@@ -40,3 +40,6 @@ bld/
 *.sqlite3
 appsettings.Development.json
 appsettings.Local.json
+
+.env
+!.env.example
