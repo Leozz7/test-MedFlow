@@ -11,7 +11,7 @@ public static class ApplicationDbContextSeed
 {
     public static async Task SeedDefaultUserAsync(
         ApplicationDbContext context,
-        PasswordHasher passwordHasher,
+        IPasswordHasher passwordHasher,
         IConfiguration configuration,
         ILogger logger)
     {

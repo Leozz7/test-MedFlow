@@ -11,6 +11,9 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddApiServices(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddHttpContextAccessor();
+        services.AddScoped<MedFlow.Application.Common.Interfaces.ICurrentUserService, MedFlow.Api.Services.CurrentUserService>();
+
         services.AddControllers()
             .AddJsonOptions(options =>
             {
