@@ -28,12 +28,18 @@ public class RabbitMQMessagePublisher : IMessagePublisher
         using var connection = _connectionFactory.CreateConnection();
         using var channel = connection.CreateModel();
 
+        var arguments = new Dictionary<string, object>
+        {
+            { "x-dead-letter-exchange", "exam-processing-dlx" },
+            { "x-dead-letter-routing-key", "exam-processing-dlq-routing-key" }
+        };
+
         channel.QueueDeclare(
             queue: "exam-processing",
             durable: true,
             exclusive: false,
             autoDelete: false,
-            arguments: null);
+            arguments: arguments);
 
         var body = Encoding.UTF8.GetBytes(examId.ToString());
 
