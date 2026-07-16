@@ -1,9 +1,11 @@
 using MedFlow.Application.Common.Security;
+using MedFlow.Application.Interfaces.Messaging;
 using MedFlow.Application.Interfaces.Repositories;
 using MedFlow.Infrastructure.Authentication;
 using MedFlow.Infrastructure.Persistence;
 using MedFlow.Infrastructure.Persistence.Interceptors;
 using MedFlow.Infrastructure.Persistence.Repositories;
+using MedFlow.Infrastructure.RabbitMQ;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,6 +38,10 @@ public static class DependencyInjection
 
         // Token JWT
         services.AddSingleton<MedFlow.Application.Interfaces.Auth.ITokenService, TokenService>();
+
+        // RabbitMQ Fila & Mensageria
+        services.AddTransient<IMessagePublisher, RabbitMQMessagePublisher>();
+        services.AddHostedService<ExamProcessingBackgroundService>();
 
         return services;
     }
