@@ -20,6 +20,7 @@ import {
   MedicalServices as MedicalServicesIcon,
   ArrowForward as ArrowForwardIcon
 } from '@mui/icons-material';
+import { jwtDecode } from 'jwt-decode';
 import api from '@/lib/axios';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -103,7 +104,16 @@ export default function LoginPage() {
       const token = response.data.token || response.data.Token;
       if (token) {
         login(token);
-        navigate('/dashboard');
+        try {
+          const decoded = jwtDecode<{ role: string }>(token);
+          if (decoded.role?.toUpperCase() === 'DOCTOR') {
+            navigate('/laudar');
+          } else {
+            navigate('/dashboard');
+          }
+        } catch {
+          navigate('/dashboard');
+        }
       } else {
         setError('Ocorreu um erro ao obter a credencial de acesso.');
       }

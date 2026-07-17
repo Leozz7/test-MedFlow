@@ -10,7 +10,7 @@ const api = axios.create({
 // Interceptor para injetar o token JWT
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('medflow_token');
+    const token = sessionStorage.getItem('medflow_token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -26,7 +26,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      localStorage.removeItem('medflow_token');
+      sessionStorage.removeItem('medflow_token');
       window.dispatchEvent(new CustomEvent('auth:unauthorized'));
     }
     return Promise.reject(error);

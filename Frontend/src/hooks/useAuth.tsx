@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthReady, setIsAuthReady] = useState(false);
 
   const login = (newToken: string) => {
-    localStorage.setItem('medflow_token', newToken);
+    sessionStorage.setItem('medflow_token', newToken);
     setToken(newToken);
     try {
       const decoded = jwtDecode<DecodedToken>(newToken);
@@ -48,13 +48,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
-    localStorage.removeItem('medflow_token');
+    sessionStorage.removeItem('medflow_token');
     setToken(null);
     setUser(null);
   };
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('medflow_token');
+    const storedToken = sessionStorage.getItem('medflow_token');
     if (storedToken) {
       try {
         const decoded = jwtDecode<DecodedToken>(storedToken);

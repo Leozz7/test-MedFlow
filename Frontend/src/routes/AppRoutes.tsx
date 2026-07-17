@@ -75,7 +75,16 @@ export const RoleProtectedRoute = ({ allowedRoles }: RoleProtectedRouteProps) =>
     return <Outlet />;
   }
 
-  return <Navigate to="/dashboard" replace />;
+  const fallbackPath = user.role?.toUpperCase() === 'DOCTOR' ? '/laudar' : '/dashboard';
+  return <Navigate to={fallbackPath} replace />;
+};
+
+const DefaultRouteRedirect = () => {
+  const { user, token } = useAuth();
+  
+  if (!token || !user) return <Navigate to="/login" replace />;
+  
+  return <Navigate to={user.role?.toUpperCase() === 'DOCTOR' ? '/laudar' : '/dashboard'} replace />;
 };
 
 export function AppRoutes() {
@@ -100,7 +109,7 @@ export function AppRoutes() {
           </Route>
 
           {/* Redirecionamento Padrão */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<DefaultRouteRedirect />} />
         </Routes>
       </Suspense>
     </BrowserRouter>
