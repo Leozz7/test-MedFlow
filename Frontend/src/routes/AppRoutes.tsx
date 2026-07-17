@@ -1,30 +1,110 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { LoginPage } from '../pages/LoginPage';
-import { RegisterPage } from '../pages/RegisterPage';
-import { DashboardPage } from '../pages/DashboardPage';
-import { ProtectedRoute } from './ProtectedRoute';
+import { useEffect, lazy, Suspense } from 'react';
+import { useLocation, BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate } from 'react-router-dom';
+import { Box, CircularProgress } from '@mui/material';
+import { useAuth } from '@/hooks/useAuth';
+
+// Pages
+const Login = lazy(() => import('@/pages/LoginPage'));
+const Register = lazy(() => import('@/pages/RegisterPage'));
+const Dashboard = lazy(() => import('@/pages/DashboardPage'));
+
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+};
+
+const PageLoader = () => (
+  <Box
+    sx={{
+      display: 'flex',
+      height: '100vh',
+      width: '100%',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'background.default',
+    }}
+  >
+    <CircularProgress color="primary" />
+  </Box>
+);
+
+export const AuthInitializer = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthReady } = useAuth();
+
+  if (!isAuthReady) {
+    return <PageLoader />;
+  }
+
+  return <>{children}</>;
+};
+
+const GlobalAuthListener = () => {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      if (window.location.pathname !== '/login') {
+        navigate('/login', { replace: true });
+      }
+    };
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
+  }, [navigate]);
+  return null;
+};
+
+const ProtectedRoute = () => {
+  const { token } = useAuth();
+  if (!token) return <Navigate to="/login" replace />;
+  return <Outlet />;
+};
+
+interface RoleProtectedRouteProps {
+  allowedRoles: string[];
+}
+
+export const RoleProtectedRoute = ({ allowedRoles }: RoleProtectedRouteProps) => {
+  const { user, token } = useAuth();
+
+  if (!token || !user) return <Navigate to="/login" replace />;
+
+  if (allowedRoles.some((r) => r.toLowerCase() === user.role?.toLowerCase())) {
+    return <Outlet />;
+  }
+
+  return <Navigate to="/dashboard" replace />;
+};
 
 export function AppRoutes() {
   return (
     <BrowserRouter>
-      <Routes>
-        {/* Rotas Públicas */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+      <ScrollToTop />
+      <GlobalAuthListener />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* Rotas Públicas */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
-        {/* Rotas Protegidas */}
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <DashboardPage />
-            </ProtectedRoute>
-          }
-        />
+          {/* Rotas Protegidas */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            
+            {/* Exemplo de rotas baseadas em permissões / cargos */}
+            {/* <Route element={<RoleProtectedRoute allowedRoles={['ATTENDANT']} />}>
+              <Route path="/upload" element={...} />
+            </Route>
+            <Route element={<RoleProtectedRoute allowedRoles={['DOCTOR']} />}>
+              <Route path="/laudar" element={...} />
+            </Route> */}
+          </Route>
 
-        {/* Redirecionamento Padrão */}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
+          {/* Redirecionamento Padrão */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

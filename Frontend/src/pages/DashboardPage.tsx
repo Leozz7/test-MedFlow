@@ -1,9 +1,11 @@
 import { Box, Container, Typography, Card, CardContent, Button } from '@mui/material';
+import { useAuth } from '@/hooks/useAuth';
 
-export function DashboardPage() {
+export default function DashboardPage() {
+  const { logout, user } = useAuth();
+
   const handleLogout = () => {
-    localStorage.removeItem('medflow_token');
-    window.location.href = '/login';
+    logout();
   };
 
   return (
@@ -18,8 +20,11 @@ export function DashboardPage() {
               Sair
             </Button>
           </Box>
-          <Typography variant="body1">
-            Seja bem-vindo ao painel principal do MedFlow. Esta é uma área restrita e segura.
+           <Typography variant="body1" sx={{ mb: 2 }}>
+            Seja bem-vindo, <strong>{user?.email}</strong> ({user?.role})!
+          </Typography>
+          <Typography variant="body2" color="textSecondary">
+            Este é o painel principal do MedFlow. Esta é uma área restrita e segura.
           </Typography>
         </CardContent>
       </Card>

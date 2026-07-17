@@ -1,6 +1,6 @@
 import { Box, Button, Container, TextField, Typography, Card, CardContent } from '@mui/material';
 
-export function RegisterPage() {
+export default function RegisterPage() {
   return (
     <Container maxWidth="xs" sx={{ height: '100vh', display: 'flex', alignItems: 'center' }}>
       <Card sx={{ width: '100%', p: 2 }}>

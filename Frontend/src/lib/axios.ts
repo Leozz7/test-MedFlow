@@ -27,10 +27,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response && error.response.status === 401) {
       localStorage.removeItem('medflow_token');
-      // Redirecionar para o login se não estiver na rota de login
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
-      }
+      window.dispatchEvent(new CustomEvent('auth:unauthorized'));
     }
     return Promise.reject(error);
   }
