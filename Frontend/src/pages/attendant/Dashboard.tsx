@@ -5,7 +5,11 @@ import {
   Avatar,
   IconButton,
   Button,
-  LinearProgress
+  LinearProgress,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  Divider
 } from '@mui/material';
 import {
   MedicalServices as MedicalServicesIcon,
@@ -18,8 +22,10 @@ import {
   Refresh as RefreshIcon,
   CloudUpload as CloudUploadIcon,
   FilterList as FilterIcon,
-  CalendarToday as CalendarIcon
+  CalendarToday as CalendarIcon,
+  ExitToApp as LogoutIcon
 } from '@mui/icons-material';
+import { useAuth } from '@/hooks/useAuth';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const CORAL = '#e05a47';
@@ -64,7 +70,17 @@ const EXAMS = [
 const TODAY = new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
 
 export default function DashboardAttendant() {
+  const { user, logout } = useAuth();
   const [search, setSearch] = useState('');
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+  const handleOpenMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleCloseMenu = () => {
+    setAnchorEl(null);
+  };
 
   const stats = [
     { label: 'Enviados hoje', value: '24', color: CORAL, icon: <UploadFileIcon sx={{ fontSize: 18 }} /> },
@@ -108,13 +124,77 @@ export default function DashboardAttendant() {
             </IconButton>
             <Box sx={{ position: 'absolute', top: 5, right: 5, width: 6, height: 6, borderRadius: '50%', bgcolor: CORAL, border: '1.5px solid #fff' }} />
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
-            <Avatar src="https://i.pravatar.cc/150?img=48" sx={{ width: 32, height: 32, border: '2px solid #e8eaed' }} />
+          <Box 
+            onClick={handleOpenMenu}
+            sx={{ display: 'flex', alignItems: 'center', gap: 1.2, cursor: 'pointer', p: 0.5, borderRadius: '8px', '&:hover': { bgcolor: '#f3f4f6' }, transition: 'background-color 0.2s' }}
+          >
+            <Avatar sx={{ width: 32, height: 32, border: '2px solid #e8eaed', bgcolor: CORAL, color: '#fff', fontSize: '0.85rem', fontWeight: 600 }}>
+              {user?.name ? user.name.charAt(0).toUpperCase() : '?'}
+            </Avatar>
             <Box>
-              <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: DARK, lineHeight: 1 }}>Juliana Costa</Typography>
+              <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: DARK, lineHeight: 1 }}>
+                {user?.name || 'Atendente'}
+              </Typography>
               <Typography sx={{ fontSize: '0.62rem', color: '#9ca3af' }}>Atendente</Typography>
             </Box>
           </Box>
+          <Menu
+            anchorEl={anchorEl}
+            open={Boolean(anchorEl)}
+            onClose={handleCloseMenu}
+            onClick={handleCloseMenu}
+            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+            slotProps={{
+              paper: {
+                elevation: 0,
+                sx: {
+                  overflow: 'visible',
+                  filter: 'drop-shadow(0px 8px 32px rgba(15, 17, 23, 0.08))',
+                  mt: 1.5,
+                  p: 1,
+                  minWidth: 220,
+                  borderRadius: '16px',
+                  border: '1px solid rgba(0, 0, 0, 0.06)',
+                  bgcolor: 'background.paper',
+                },
+              }
+            }}
+          >
+            {/* Header info */}
+            <Box sx={{ px: 1.5, py: 1.2, mb: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+              <Typography sx={{ fontSize: '0.85rem', fontWeight: 800, color: DARK, letterSpacing: '-0.2px' }}>
+                {user?.name || 'Usuário'}
+              </Typography>
+              <Typography sx={{ fontSize: '0.7rem', color: '#6b7280', fontWeight: 500, wordBreak: 'break-all' }}>
+                {user?.email || 'usuario@medflow.com'}
+              </Typography>
+              <Box sx={{ display: 'inline-flex', mt: 0.5, px: 1, py: 0.2, bgcolor: `${CORAL}10`, color: CORAL, borderRadius: '6px', width: 'fit-content' }}>
+                <Typography sx={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  {user?.role === 'DOCTOR' ? 'Médico' : 'Atendente'}
+                </Typography>
+              </Box>
+            </Box>
+
+            <Divider sx={{ my: 0.5, borderColor: 'rgba(0, 0, 0, 0.04)' }} />
+
+            {/* Logout item with custom hover */}
+            <MenuItem onClick={logout} sx={{ 
+              borderRadius: '8px', 
+              py: 1, 
+              px: 1.5,
+              color: CORAL,
+              '&:hover': { 
+                bgcolor: `${CORAL}08`,
+                '& .MuiListItemIcon-root': { color: CORAL }
+              }
+            }}>
+              <ListItemIcon sx={{ minWidth: '32px !important', color: CORAL, transition: 'color 0.2s' }}>
+                <LogoutIcon sx={{ fontSize: 18 }} />
+              </ListItemIcon>
+              <Typography sx={{ fontSize: '0.82rem', fontWeight: 700 }}>Sair da conta</Typography>
+            </MenuItem>
+          </Menu>
         </Box>
       </Box>
 

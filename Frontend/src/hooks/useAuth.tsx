@@ -5,6 +5,7 @@ interface DecodedToken {
   sub: string;
   email: string;
   role: string;
+  name: string;
   exp: number;
 }
 
@@ -12,6 +13,7 @@ interface User {
   id: string;
   email: string;
   role: string;
+  name: string;
 }
 
 interface AuthContextType {
@@ -38,6 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         id: decoded.sub,
         email: decoded.email,
         role: decoded.role,
+        name: decoded.name,
       });
     } catch {
       setUser(null);
@@ -64,6 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             id: decoded.sub,
             email: decoded.email,
             role: decoded.role,
+            name: decoded.name,
           });
         }
       } catch {
