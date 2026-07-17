@@ -104,6 +104,9 @@ public class TokenServiceTests
         var emailClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Email)?.Value;
         emailClaim.Should().Be(user.Email);
 
+        var nameClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "name")?.Value;
+        nameClaim.Should().Be(user.Name);
+
         var roleClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "role")?.Value;
         roleClaim.Should().Be("DOCTOR");
     }
