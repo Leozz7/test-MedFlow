@@ -6,7 +6,8 @@ import { useAuth } from '@/hooks/useAuth';
 // Pages
 const Login = lazy(() => import('@/pages/LoginPage'));
 const Register = lazy(() => import('@/pages/RegisterPage'));
-const Dashboard = lazy(() => import('@/pages/DashboardPage'));
+const DashboardDoctor = lazy(() => import('@/pages/doctor/Dashboard'));
+const DashboardAttendant = lazy(() => import('@/pages/attendant/Dashboard'));
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -90,15 +91,12 @@ export function AppRoutes() {
 
           {/* Rotas Protegidas */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            
-            {/* Exemplo de rotas baseadas em permissões / cargos */}
-            {/* <Route element={<RoleProtectedRoute allowedRoles={['ATTENDANT']} />}>
-              <Route path="/upload" element={...} />
+            <Route element={<RoleProtectedRoute allowedRoles={['ATTENDANT']} />}>
+              <Route path="/dashboard" element={<DashboardAttendant />} />
             </Route>
             <Route element={<RoleProtectedRoute allowedRoles={['DOCTOR']} />}>
-              <Route path="/laudar" element={...} />
-            </Route> */}
+              <Route path="/laudar" element={<DashboardDoctor />} />
+            </Route> 
           </Route>
 
           {/* Redirecionamento Padrão */}
