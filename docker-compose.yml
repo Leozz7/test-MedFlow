@@ -71,5 +71,16 @@ services:
             - src/*/bin/
             - src/*/obj/
 
+  web:
+    image: medflow-web:latest
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+    container_name: medflow-web
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+
 volumes:
   postgres_data:
