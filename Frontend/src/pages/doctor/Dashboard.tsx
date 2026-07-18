@@ -8,7 +8,13 @@ import {
   Divider,
   Menu,
   MenuItem,
-  ListItemIcon
+  ListItemIcon,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  CircularProgress
 } from '@mui/material';
 import {
   MedicalServices as MedicalServicesIcon,
@@ -16,13 +22,12 @@ import {
   Search as SearchIcon,
   CheckCircle as CheckCircleIcon,
   Assignment as AssignmentIcon,
-  FilterList as FilterIcon,
-  Visibility as ViewIcon,
-  Edit as EditIcon,
   LocalHospital as ExamIcon,
   ExitToApp as LogoutIcon
 } from '@mui/icons-material';
 import { useAuth } from '@/hooks/useAuth';
+import { useExamsQuery, useSubmitReportMutation, ExamCard } from '@/features/exams';
+import type { ExamDto } from '@/features/exams';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const CORAL = '#e05a47';
@@ -38,20 +43,13 @@ const Card = ({ children, sx = {} }: { children: React.ReactNode; sx?: object })
   </Box>
 );
 
-// ─── Mock Data ─────────────────────────────────────────────────────────────────
-const PENDING_EXAMS = [
-  { id: '#4821', patient: 'Ana Beatriz S.', type: 'Tomografia Crânio', age: '34 anos', date: '17/07 · 09:14', urgency: 'Alta',   avatar: 'https://i.pravatar.cc/150?img=47' },
-  { id: '#4816', patient: 'Pedro Alves R.', type: 'Ressonância Coluna', age: '52 anos', date: '17/07 · 07:40', urgency: 'Normal', avatar: 'https://i.pravatar.cc/150?img=15' },
-  { id: '#4812', patient: 'Sofia N. Lima',  type: 'Raio-X Tórax',      age: '28 anos', date: '16/07 · 22:15', urgency: 'Normal', avatar: 'https://i.pravatar.cc/150?img=9'  },
-  { id: '#4808', patient: 'Marcos F. S.',   type: 'Ultrassom Abd.',    age: '61 anos', date: '16/07 · 18:30', urgency: 'Alta',   avatar: 'https://i.pravatar.cc/150?img=7'  },
-  { id: '#4807', patient: 'Leticia Silva',  type: 'Tomografia Tórax',  age: '41 anos', date: '16/07 · 15:40', urgency: 'Normal', avatar: 'https://i.pravatar.cc/150?img=22' },
-];
-
-const RECENT_REPORTS = [
-  { id: '#4819', patient: 'Fernanda O.',  type: 'Raio-X', date: '17/07 · 08:30', avatar: 'https://i.pravatar.cc/150?img=25' },
-  { id: '#4810', patient: 'Gabriel T.',   type: 'Tomografia', date: '16/07 · 15:20', avatar: 'https://i.pravatar.cc/150?img=11' },
-  { id: '#4805', patient: 'Lúcia Mendes', type: 'Ressonância', date: '16/07 · 11:10', avatar: 'https://i.pravatar.cc/150?img=3'  },
-];
+const parseFileName = (fileName: string) => {
+  if (!fileName) return 'Sem Nome';
+  const base = fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
+  return base
+    .replace(/[_-]/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+};
 
 const TODAY = new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
 
@@ -59,6 +57,17 @@ export default function DashboardDoctor() {
   const { user, logout } = useAuth();
   const [search, setSearch] = useState('');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  
+  // Real API integration hooks
+  const { data: exams = [], isLoading } = useExamsQuery();
+  const submitReportMutation = useSubmitReportMutation();
+
+  // State for writing report
+  const [selectedExam, setSelectedExam] = useState<ExamDto | null>(null);
+  const [reportText, setReportText] = useState('');
+
+  // State for viewing existing report
+  const [viewingReportExam, setViewingReportExam] = useState<ExamDto | null>(null);
 
   const handleOpenMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -68,11 +77,37 @@ export default function DashboardDoctor() {
     setAnchorEl(null);
   };
 
+  // Dynamic stats calculation
+  const pendingExams = exams.filter((e) => e.status === 'DONE');
+  const recentReports = exams.filter((e) => e.status === 'REPORTED');
+
+  const awaitingReportCount = pendingExams.length;
+  const reportedTodayCount = recentReports.filter((e) => {
+    const createdDate = new Date(e.created);
+    const today = new Date();
+    return createdDate.toDateString() === today.toDateString();
+  }).length;
+  const reportedThisMonthCount = recentReports.filter((e) => {
+    const createdDate = new Date(e.created);
+    const today = new Date();
+    return createdDate.getMonth() === today.getMonth() && createdDate.getFullYear() === today.getFullYear();
+  }).length;
+
   const stats = [
-    { label: 'Aguardando laudo', value: '11', color: CORAL, icon: <AssignmentIcon sx={{ fontSize: 18 }} /> },
-    { label: 'Laudados hoje', value: '8', color: INDIGO, icon: <CheckCircleIcon sx={{ fontSize: 18 }} /> },
-    { label: 'Laudos este mês', value: '134', color: '#059669', icon: <ExamIcon sx={{ fontSize: 18 }} /> }
+    { label: 'Aguardando laudo', value: String(awaitingReportCount), color: CORAL, icon: <AssignmentIcon sx={{ fontSize: 18 }} /> },
+    { label: 'Laudados hoje', value: String(reportedTodayCount), color: INDIGO, icon: <CheckCircleIcon sx={{ fontSize: 18 }} /> },
+    { label: 'Laudos este mês', value: String(reportedThisMonthCount), color: '#059669', icon: <ExamIcon sx={{ fontSize: 18 }} /> }
   ];
+
+  const filteredPendingExams = pendingExams.filter((ex) =>
+    parseFileName(ex.fileName).toLowerCase().includes(search.toLowerCase()) ||
+    ex.fileName.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const filteredRecentReports = recentReports.filter((ex) =>
+    parseFileName(ex.fileName).toLowerCase().includes(search.toLowerCase()) ||
+    ex.fileName.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <Box sx={{ height: '100vh', bgcolor: BG, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -213,114 +248,324 @@ export default function DashboardDoctor() {
           ))}
         </Box>
 
-        {/* Grid: Pending list + Recent reports */}
-        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 2.5, flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        {/* Kanban Board Layout */}
+        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3, flex: 1, minHeight: 0, overflow: 'hidden' }}>
           
-          {/* Table list card */}
-          <Card sx={{ p: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            {/* Table title bar */}
-            <Box sx={{ px: 3, py: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f3f4f6', flexShrink: 0 }}>
+          {/* Column 1: Awaiting Report (PENDING / DONE) */}
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              bgcolor: 'rgba(234, 234, 230, 0.6)', 
+              borderRadius: '24px', 
+              p: 3, 
+              border: '1.5px solid rgba(0, 0, 0, 0.04)', 
+              overflow: 'hidden' 
+            }}
+          >
+            {/* Column Header */}
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.06)', flexShrink: 0 }}>
               <Box>
-                <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: DARK }}>Fila de Laudos</Typography>
-                <Typography sx={{ fontSize: '0.68rem', color: '#9ca3af', mt: 0.2 }}>Exames marcados como prontos pela IA</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', color: DARK }}>Fila de Laudos</Typography>
+                  <Box 
+                    sx={{ 
+                      ml: 1.5, 
+                      px: 1.2, 
+                      py: 0.3, 
+                      borderRadius: '99px', 
+                      bgcolor: `${CORAL}12`, 
+                      color: CORAL, 
+                      fontSize: '0.7rem', 
+                      fontWeight: 800 
+                    }}
+                  >
+                    {filteredPendingExams.length}
+                  </Box>
+                </Box>
+                <Typography sx={{ fontSize: '0.68rem', color: '#6b7280', mt: 0.2 }}>Prontos para diagnóstico médico</Typography>
               </Box>
-              <IconButton size="small" sx={{ bgcolor: '#f9fafb', border: '1.5px solid #e8eaed', borderRadius: '10px', p: 0.6 }}>
-                <FilterIcon sx={{ fontSize: 15, color: '#6b7280' }} />
-              </IconButton>
             </Box>
 
-            {/* Table headers */}
-            <Box sx={{ display: 'grid', gridTemplateColumns: '2fr 1.6fr 0.8fr 0.8fr 1fr', px: 3, py: 1.2, bgcolor: '#f9fafb', borderBottom: '1px solid #f3f4f6', flexShrink: 0 }}>
-              {['Paciente', 'Exame', 'Idade', 'Urgência', 'Ações'].map((h) => (
-                <Typography key={h} sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</Typography>
-              ))}
+            {/* Column Body */}
+            <Box sx={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, mt: 2.5, pr: 0.5 }}>
+              {isLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                  <CircularProgress size={30} sx={{ color: INDIGO }} />
+                </Box>
+              ) : filteredPendingExams.length === 0 ? (
+                <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#9ca3af', p: 3, textAlign: 'center' }}>
+                  <AssignmentIcon sx={{ fontSize: 36, mb: 1.5, color: '#cbd5e1' }} />
+                  <Typography sx={{ fontSize: '0.8rem', fontWeight: 600 }}>Nenhum exame para laudar</Typography>
+                  <Typography sx={{ fontSize: '0.7rem', color: '#9ca3af', mt: 0.5 }}>Os exames enviados aparecerão aqui após análise da IA.</Typography>
+                </Box>
+              ) : (
+                filteredPendingExams.map((ex) => (
+                  <ExamCard 
+                    key={ex.id}
+                    exam={ex}
+                    onActionClick={(exam) => {
+                      setSelectedExam(exam);
+                      setReportText('');
+                    }}
+                    actionLabel="Laudar"
+                    isReported={false}
+                  />
+                ))
+              )}
             </Box>
+          </Box>
 
-            {/* Table body (Scrollable) */}
-            <Box sx={{ flex: 1, overflowY: 'auto', px: 0 }}>
-              {PENDING_EXAMS.map((ex, i) => (
-                <Box
-                  key={ex.id}
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: '2fr 1.6fr 0.8fr 0.8fr 1fr',
-                    px: 3,
-                    py: 1.8,
-                    alignItems: 'center',
-                    borderBottom: i < PENDING_EXAMS.length - 1 ? '1px solid #f3f4f6' : 'none',
-                    '&:hover': { bgcolor: '#fafafa' },
-                    transition: 'background 0.1s',
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <Avatar src={ex.avatar} sx={{ width: 28, height: 28 }} />
-                    <Box>
-                      <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: DARK }}>{ex.patient}</Typography>
-                      <Typography sx={{ fontSize: '0.65rem', color: '#9ca3af' }}>{ex.id}</Typography>
-                    </Box>
-                  </Box>
-                  <Box>
-                    <Typography sx={{ fontSize: '0.8rem', color: '#374151', fontWeight: 500 }}>{ex.type}</Typography>
-                    <Typography sx={{ fontSize: '0.65rem', color: '#9ca3af' }}>{ex.date}</Typography>
-                  </Box>
-                  <Typography sx={{ fontSize: '0.78rem', color: '#6b7280' }}>{ex.age}</Typography>
-                  <Box>
-                    <Box sx={{
-                      display: 'inline-flex', px: 1, py: 0.3, borderRadius: '99px',
-                      bgcolor: ex.urgency === 'Alta' ? 'rgba(220,38,38,0.08)' : 'rgba(5,150,105,0.08)',
-                      color: ex.urgency === 'Alta' ? '#dc2626' : '#059669'
-                    }}>
-                      <Typography sx={{ fontSize: '0.65rem', fontWeight: 700 }}>{ex.urgency}</Typography>
-                    </Box>
-                  </Box>
-                  <Box sx={{ display: 'flex', gap: 0.8 }}>
-                    <IconButton size="small" sx={{ bgcolor: '#f3f4f6', borderRadius: '8px', p: 0.5, '&:hover': { bgcolor: `${INDIGO}15`, color: INDIGO } }}>
-                      <ViewIcon sx={{ fontSize: 13 }} />
-                    </IconButton>
-                    <Button size="small" variant="contained"
-                      sx={{ bgcolor: CORAL, color: '#fff', borderRadius: '8px', textTransform: 'none', fontWeight: 700, fontSize: '0.7rem', px: 1.5, py: 0.5, minWidth: 0, boxShadow: 'none', '&:hover': { bgcolor: '#c84937' } }}>
-                      Laudar
-                    </Button>
+          {/* Column 2: Reported (REPORTED) */}
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              bgcolor: 'rgba(234, 234, 230, 0.6)', 
+              borderRadius: '24px', 
+              p: 3, 
+              border: '1.5px solid rgba(0, 0, 0, 0.04)', 
+              overflow: 'hidden' 
+            }}
+          >
+            {/* Column Header */}
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.06)', flexShrink: 0 }}>
+              <Box>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', color: DARK }}>Laudos Emitidos</Typography>
+                  <Box 
+                    sx={{ 
+                      ml: 1.5, 
+                      px: 1.2, 
+                      py: 0.3, 
+                      borderRadius: '99px', 
+                      bgcolor: 'rgba(5, 150, 105, 0.1)', 
+                      color: '#059669', 
+                      fontSize: '0.7rem', 
+                      fontWeight: 800 
+                    }}
+                  >
+                    {filteredRecentReports.length}
                   </Box>
                 </Box>
-              ))}
+                <Typography sx={{ fontSize: '0.68rem', color: '#6b7280', mt: 0.2 }}>Histórico de laudos assinados</Typography>
+              </Box>
             </Box>
-          </Card>
 
-          {/* Right sidebar - Recent reports */}
-          <Card sx={{ display: 'flex', flexDirection: 'column', p: 0, overflow: 'hidden' }}>
-            <Box sx={{ px: 3, py: 2, borderBottom: '1px solid #f3f4f6', flexShrink: 0 }}>
-              <Typography sx={{ fontWeight: 800, fontSize: '0.85rem', color: DARK }}>Laudos Recentes</Typography>
-              <Typography sx={{ fontSize: '0.68rem', color: '#9ca3af', mt: 0.2 }}>Seus últimos diagnósticos assinados</Typography>
-            </Box>
-            <Box sx={{ flex: 1, overflowY: 'auto', px: 2.5, py: 1 }}>
-              {RECENT_REPORTS.map((r, i) => (
-                <Box key={r.id}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 1.5 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
-                      <Avatar src={r.avatar} sx={{ width: 28, height: 28 }} />
-                      <Box>
-                        <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: DARK }}>{r.patient}</Typography>
-                        <Typography sx={{ fontSize: '0.65rem', color: '#9ca3af' }}>{r.type} · {r.date}</Typography>
-                      </Box>
-                    </Box>
-                    <Box sx={{ display: 'flex', gap: 0.4 }}>
-                      <IconButton size="small" sx={{ borderRadius: '8px', p: 0.5, bgcolor: '#f3f4f6', '&:hover': { bgcolor: `${INDIGO}15` } }}>
-                        <ViewIcon sx={{ fontSize: 12, color: '#6b7280' }} />
-                      </IconButton>
-                      <IconButton size="small" sx={{ borderRadius: '8px', p: 0.5, bgcolor: '#f3f4f6', '&:hover': { bgcolor: `${CORAL}15` } }}>
-                        <EditIcon sx={{ fontSize: 12, color: '#6b7280' }} />
-                      </IconButton>
-                    </Box>
-                  </Box>
-                  {i < RECENT_REPORTS.length - 1 && <Divider sx={{ borderColor: '#f3f4f6' }} />}
+            {/* Column Body */}
+            <Box sx={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, mt: 2.5, pr: 0.5 }}>
+              {isLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                  <CircularProgress size={30} sx={{ color: INDIGO }} />
                 </Box>
-              ))}
+              ) : filteredRecentReports.length === 0 ? (
+                <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#9ca3af', p: 3, textAlign: 'center' }}>
+                  <CheckCircleIcon sx={{ fontSize: 36, mb: 1.5, color: '#cbd5e1' }} />
+                  <Typography sx={{ fontSize: '0.8rem', fontWeight: 600 }}>Nenhum laudo emitido</Typography>
+                  <Typography sx={{ fontSize: '0.7rem', color: '#9ca3af', mt: 0.5 }}>Seus laudos assinados serão arquivados nesta coluna.</Typography>
+                </Box>
+              ) : (
+                filteredRecentReports.map((r) => (
+                  <ExamCard 
+                    key={r.id}
+                    exam={r}
+                    onActionClick={(exam) => setViewingReportExam(exam)}
+                    actionLabel="Visualizar"
+                    isReported={true}
+                  />
+                ))
+              )}
             </Box>
-          </Card>
+          </Box>
+
         </Box>
 
       </Box>
+
+      {/* ── DIALOG DE EMISSÃO DE LAUDO ───────────────────────────────── */}
+      <Dialog
+        open={Boolean(selectedExam)}
+        onClose={() => {
+          if (!submitReportMutation.isPending) {
+            setSelectedExam(null);
+            setReportText('');
+          }
+        }}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: { borderRadius: '20px', p: 1 }
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, color: DARK }}>
+          Emitir Laudo Médico
+        </DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 1 }}>
+          {selectedExam && (
+            <>
+              <Box>
+                <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.04em', mb: 0.5 }}>
+                  Exame / Arquivo
+                </Typography>
+                <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: DARK }}>
+                  {selectedExam.fileName}
+                </Typography>
+                <Typography sx={{ fontSize: '0.7rem', color: '#6b7280' }}>
+                  ID: {selectedExam.id}
+                </Typography>
+              </Box>
+
+              <Box sx={{ bgcolor: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.12)', borderRadius: '12px', p: 2 }}>
+                <Typography sx={{ fontSize: '0.72rem', fontWeight: 800, color: INDIGO, textTransform: 'uppercase', letterSpacing: '0.04em', mb: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <MedicalServicesIcon sx={{ fontSize: 14 }} /> Análise Prévia da IA (Seq)
+                </Typography>
+                <Typography sx={{ fontSize: '0.8rem', color: '#374151', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                  {selectedExam.processingResult || 'O processamento da IA não indicou achados específicos.'}
+                </Typography>
+              </Box>
+
+              <Box>
+                <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.04em', mb: 1 }}>
+                  Conclusão Diagnóstica (Laudo)
+                </Typography>
+                <TextField
+                  multiline
+                  rows={5}
+                  fullWidth
+                  value={reportText}
+                  onChange={(e) => setReportText(e.target.value)}
+                  placeholder="Descreva aqui o diagnóstico detalhado e orientações clínicas..."
+                  disabled={submitReportMutation.isPending}
+                  error={reportText.length > 0 && reportText.trim().length < 10}
+                  helperText={reportText.length > 0 && reportText.trim().length < 10 ? "O laudo deve conter pelo menos 10 caracteres." : ""}
+                  slotProps={{
+                    input: {
+                      sx: { borderRadius: '12px', fontSize: '0.85rem' }
+                    }
+                  }}
+                />
+              </Box>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2, gap: 1 }}>
+          <Button
+            onClick={() => {
+              setSelectedExam(null);
+              setReportText('');
+            }}
+            disabled={submitReportMutation.isPending}
+            sx={{ textTransform: 'none', fontWeight: 700, color: '#6b7280', fontSize: '0.8rem' }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            disabled={reportText.trim().length < 10 || submitReportMutation.isPending}
+            onClick={() => {
+              if (selectedExam) {
+                submitReportMutation.mutate(
+                  { id: selectedExam.id, data: { report: reportText } },
+                  {
+                    onSuccess: () => {
+                      setSelectedExam(null);
+                      setReportText('');
+                    }
+                  }
+                );
+              }
+            }}
+            sx={{
+              bgcolor: CORAL,
+              color: '#fff',
+              borderRadius: '10px',
+              textTransform: 'none',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              px: 2.5,
+              '&:hover': { bgcolor: '#c84937' },
+              '&.Mui-disabled': { bgcolor: 'rgba(0, 0, 0, 0.12)', color: 'rgba(0, 0, 0, 0.26)' }
+            }}
+          >
+            {submitReportMutation.isPending ? (
+              <CircularProgress size={20} sx={{ color: '#fff' }} />
+            ) : (
+              'Assinar e Enviar'
+            )}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── DIALOG DE VISUALIZAÇÃO DE LAUDO ───────────────────────────── */}
+      <Dialog
+        open={Boolean(viewingReportExam)}
+        onClose={() => setViewingReportExam(null)}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: { borderRadius: '20px', p: 1 }
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, color: DARK }}>
+          Laudo Emitido
+        </DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 1 }}>
+          {viewingReportExam && (
+            <>
+              <Box>
+                <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.04em', mb: 0.5 }}>
+                  Exame / Arquivo
+                </Typography>
+                <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: DARK }}>
+                  {viewingReportExam.fileName}
+                </Typography>
+                <Typography sx={{ fontSize: '0.7rem', color: '#6b7280' }}>
+                  ID: {viewingReportExam.id} · Enviado em {new Date(viewingReportExam.created).toLocaleString('pt-BR')}
+                </Typography>
+              </Box>
+
+              <Box sx={{ bgcolor: 'rgba(0, 0, 0, 0.02)', border: '1px solid rgba(0, 0, 0, 0.05)', borderRadius: '12px', p: 2 }}>
+                <Typography sx={{ fontSize: '0.72rem', fontWeight: 800, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em', mb: 1 }}>
+                  Resultado da IA (Histórico)
+                </Typography>
+                <Typography sx={{ fontSize: '0.8rem', color: '#4b5563', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                  {viewingReportExam.processingResult || 'Processamento da IA sem achados específicos.'}
+                </Typography>
+              </Box>
+
+              <Box sx={{ borderLeft: `3px solid ${INDIGO}`, pl: 2, py: 0.5 }}>
+                <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.04em', mb: 1 }}>
+                  Laudo Clínico Assinado
+                </Typography>
+                <Typography sx={{ fontSize: '0.85rem', color: DARK, lineHeight: 1.6, whiteSpace: 'pre-wrap', fontWeight: 500 }}>
+                  {viewingReportExam.report}
+                </Typography>
+              </Box>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button
+            onClick={() => setViewingReportExam(null)}
+            sx={{
+              bgcolor: 'rgba(0, 0, 0, 0.05)',
+              color: '#374151',
+              borderRadius: '10px',
+              textTransform: 'none',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              px: 3,
+              '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.08)' }
+            }}
+          >
+            Fechar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
