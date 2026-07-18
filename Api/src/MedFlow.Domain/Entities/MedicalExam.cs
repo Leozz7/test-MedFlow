@@ -17,13 +17,31 @@ public class MedicalExam : BaseEntity
     protected MedicalExam() { }
 #pragma warning restore CS8618
 
-    public MedicalExam(string fileName)
+    public MedicalExam(
+        string fileName,
+        Guid? id = null,
+        ExamStatus? status = null,
+        string? processingResult = null,
+        string? report = null,
+        DateTime? created = null)
     {
         if (string.IsNullOrWhiteSpace(fileName))
             throw new DomainException("O nome do arquivo não pode ser vazio.");
 
         FileName = fileName;
-        Status = ExamStatus.PENDING;
+        Status = status ?? ExamStatus.PENDING;
+        ProcessingResult = processingResult;
+        Report = report;
+
+        if (id.HasValue && id.Value != Guid.Empty)
+        {
+            Id = id.Value;
+        }
+
+        if (created.HasValue)
+        {
+            Created = created.Value;
+        }
     }
 
     public void StartProcessing()

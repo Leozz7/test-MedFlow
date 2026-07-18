@@ -24,10 +24,11 @@ public class GetExamsTests
     }
 
     [Fact]
-    public async Task Handler_WithDoctorRole_ShouldQueryOnlyDoneExams()
+    public async Task Handler_WithDoctorRole_ShouldQueryOnlyDoneAndReportedExams()
     {
         // Arrange
         var query = new GetExamsQuery(UserRole.DOCTOR);
+        
         var doneExam1 = new MedicalExam("exam1.pdf");
         doneExam1.StartProcessing();
         doneExam1.CompleteProcessing("result 1");
@@ -36,20 +37,27 @@ public class GetExamsTests
         doneExam2.StartProcessing();
         doneExam2.CompleteProcessing("result 2");
 
-        var expectedExams = new List<MedicalExam> { doneExam1, doneExam2 };
-        _examRepository.GetByStatusAsync(ExamStatus.DONE, Arg.Any<CancellationToken>())
-            .Returns(expectedExams);
+        var pendingExam = new MedicalExam("exam3.pdf");
+
+        var reportedExam = new MedicalExam("exam4.pdf");
+        reportedExam.StartProcessing();
+        reportedExam.CompleteProcessing("result 4");
+        reportedExam.EmitReport("this is a report");
+
+        var databaseExams = new List<MedicalExam> { doneExam1, doneExam2, pendingExam, reportedExam };
+        _examRepository.GetAllAsync(Arg.Any<CancellationToken>())
+            .Returns(databaseExams);
 
         // Act
         var result = await _handler.Handle(query, CancellationToken.None);
 
         // Assert
-        result.Should().HaveCount(2);
-        result.Select(dto => dto.FileName).Should().Contain(new[] { "exam1.pdf", "exam2.pdf" });
-        result.All(dto => dto.Status == ExamStatus.DONE).Should().BeTrue();
+        result.Should().HaveCount(3);
+        result.Select(dto => dto.FileName).Should().Contain(new[] { "exam1.pdf", "exam2.pdf", "exam4.pdf" });
+        result.Select(dto => dto.FileName).Should().NotContain("exam3.pdf");
 
-        await _examRepository.Received(1).GetByStatusAsync(ExamStatus.DONE, Arg.Any<CancellationToken>());
-        await _examRepository.DidNotReceive().GetAllAsync(Arg.Any<CancellationToken>());
+        await _examRepository.Received(1).GetAllAsync(Arg.Any<CancellationToken>());
+        await _examRepository.DidNotReceive().GetByStatusAsync(Arg.Any<ExamStatus>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

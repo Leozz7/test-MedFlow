@@ -25,8 +25,9 @@ public class GetExamsHandler : IRequestHandler<GetExamsQuery, IEnumerable<ExamDt
 
         if (request.UserRole == UserRole.DOCTOR)
         {
-            // Médicos veem apenas exames concluídos (prontos para laudo)
-            exams = await _examRepository.GetByStatusAsync(ExamStatus.DONE, cancellationToken);
+            // Medicos veem exames concluidos (prontos para laudo) e ja laudados
+            exams = (await _examRepository.GetAllAsync(cancellationToken))
+                .Where(e => e.Status == ExamStatus.DONE || e.Status == ExamStatus.REPORTED);
         }
         else
         {
@@ -34,7 +35,7 @@ public class GetExamsHandler : IRequestHandler<GetExamsQuery, IEnumerable<ExamDt
             exams = await _examRepository.GetAllAsync(cancellationToken);
         }
 
-        // Mapeamento simples (idealmente seria usando AutoMapper)
+        // Mapeamento  
         return exams.Select(e => new ExamDto
         {
             Id = e.Id,
