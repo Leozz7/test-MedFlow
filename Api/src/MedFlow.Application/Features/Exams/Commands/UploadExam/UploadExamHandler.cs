@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using MediatR;
 using MedFlow.Domain.Entities;
+using MedFlow.Domain.Enums;
 using MedFlow.Application.Interfaces.Repositories;
 using MedFlow.Application.Interfaces.Messaging;
 
@@ -21,16 +22,24 @@ public class UploadExamHandler : IRequestHandler<UploadExamCommand, Guid>
 
     public async Task<Guid> Handle(UploadExamCommand request, CancellationToken cancellationToken)
     {
-        // Criação inicial do exame já define o Status como PENDING pelo construtor do Domínio
-        var exam = new MedicalExam(request.FileName);
+        var exam = new MedicalExam(
+            request.FileName,
+            request.Id,
+            ExamStatus.PENDING,
+            null,
+            null,
+            request.Created
+        );
 
         _examRepository.Add(exam);
         
-        // Persistência
         await _examRepository.SaveChangesAsync(cancellationToken);
 
-        // Dispara mensagem assíncrona para o RabbitMQ
-        await _messagePublisher.PublishExamProcessingMessageAsync(exam.Id, cancellationToken);
+        // Dispara mensagem assíncrona para o RabbitMQ apenas se o status inicial for PENDING
+        if (exam.Status == ExamStatus.PENDING)
+        {
+            await _messagePublisher.PublishExamProcessingMessageAsync(exam.Id, cancellationToken);
+        }
 
         return exam.Id;
     }
