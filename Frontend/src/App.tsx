@@ -1,10 +1,12 @@
 import { Providers } from '@/lib/providers';
-import { AppRoutes } from '@/routes/AppRoutes';
+import { AppRoutes, AuthInitializer } from '@/routes/AppRoutes';
 
 function App() {
   return (
     <Providers>
-      <AppRoutes />
+      <AuthInitializer>
+        <AppRoutes />
+      </AuthInitializer>
     </Providers>
   );
 }
