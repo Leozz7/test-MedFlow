@@ -5,11 +5,11 @@ import {
   Avatar,
   IconButton,
   Button,
-  LinearProgress,
   Menu,
   MenuItem,
   ListItemIcon,
-  Divider
+  Divider,
+  CircularProgress
 } from '@mui/material';
 import {
   MedicalServices as MedicalServicesIcon,
@@ -26,6 +26,9 @@ import {
   ExitToApp as LogoutIcon
 } from '@mui/icons-material';
 import { useAuth } from '@/hooks/useAuth';
+import { useExamsQuery, useUploadExamMutation } from '@/features/exams';
+import type { ExamStatus } from '@/features/exams';
+import ModalCreate from '@/components/attendant/ModalCreate';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const CORAL = '#e05a47';
@@ -34,11 +37,22 @@ const BG = '#f5f5f0';
 const CARD = '#ffffff';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const Card = ({ children, sx = {} }: { children: React.ReactNode; sx?: object }) => (
-  <Box sx={{ bgcolor: CARD, borderRadius: '20px', p: 2.5, boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.04)', ...sx }}>
+const Card = ({ children, sx = {}, onClick }: { children: React.ReactNode; sx?: object; onClick?: () => void }) => (
+  <Box 
+    onClick={onClick}
+    sx={{ bgcolor: CARD, borderRadius: '20px', p: 2.5, boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.04)', ...sx }}
+  >
     {children}
   </Box>
 );
+
+const parseFileName = (fileName: string) => {
+  if (!fileName) return 'Sem Nome';
+  const base = fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
+  return base
+    .replace(/[_-]/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+};
 
 const StatusChip = ({ status }: { status: string }) => {
   const map: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
@@ -46,7 +60,7 @@ const StatusChip = ({ status }: { status: string }) => {
     PROCESSING: { label: 'Processando', color: '#2563eb', bg: 'rgba(37,99,235,0.08)',   icon: <RefreshIcon sx={{ fontSize: 11 }} /> },
     DONE:       { label: 'Pronto',      color: '#059669', bg: 'rgba(5,150,105,0.08)',   icon: <CheckCircleIcon sx={{ fontSize: 11 }} /> },
     ERROR:      { label: 'Erro',        color: '#dc2626', bg: 'rgba(220,38,38,0.08)',   icon: <ErrorIcon sx={{ fontSize: 11 }} /> },
-    REPORTED:   { label: 'Laudado',     color: '#7c3aed', bg: 'rgba(124,58,237,0.08)', icon: <CheckCircleIcon sx={{ fontSize: 11 }} /> },
+    REPORTED:   { label: 'Laudado',     color: '#7c3aed', bg: 'rgba(124,58,237,0.08)',  icon: <CheckCircleIcon sx={{ fontSize: 11 }} /> },
   };
   const s = map[status] ?? map.PENDING;
   return (
@@ -57,22 +71,18 @@ const StatusChip = ({ status }: { status: string }) => {
   );
 };
 
-// ─── Mock Data ─────────────────────────────────────────────────────────────────
-const EXAMS = [
-  { id: '#4821', patient: 'Ana Beatriz S.', type: 'Tomografia', date: '17/07 · 09:14', status: 'DONE',       avatar: 'https://i.pravatar.cc/150?img=47' },
-  { id: '#4820', patient: 'Carlos M. Jr.', type: 'Ressonância', date: '17/07 · 08:55', status: 'PROCESSING', avatar: 'https://i.pravatar.cc/150?img=12' },
-  { id: '#4819', patient: 'Fernanda O.',   type: 'Raio-X',     date: '17/07 · 08:30', status: 'REPORTED',   avatar: 'https://i.pravatar.cc/150?img=25' },
-  { id: '#4818', patient: 'Ricardo P.',    type: 'Ultrassom',  date: '17/07 · 07:58', status: 'PENDING',    avatar: 'https://i.pravatar.cc/150?img=33' },
-  { id: '#4817', patient: 'Mariana L.',    type: 'Tomografia', date: '16/07 · 18:42', status: 'ERROR',      avatar: 'https://i.pravatar.cc/150?img=5'  },
-  { id: '#4816', patient: 'Roberto Alves', type: 'Tomografia', date: '16/07 · 17:10', status: 'REPORTED',   avatar: 'https://i.pravatar.cc/150?img=15' },
-];
-
 const TODAY = new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
 
 export default function DashboardAttendant() {
   const { user, logout } = useAuth();
   const [search, setSearch] = useState('');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  
+  // Real API integration hooks
+  const { data: exams = [], isLoading } = useExamsQuery();
+  const uploadExamMutation = useUploadExamMutation();
+
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const handleOpenMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -82,12 +92,46 @@ export default function DashboardAttendant() {
     setAnchorEl(null);
   };
 
+  const handleOpenCreateModal = () => {
+    setIsCreateModalOpen(true);
+  };
+
+  const handleCreateExam = (data: {
+    fileName: string;
+    status: ExamStatus;
+    report: string | null;
+    created: string | undefined;
+  }) => {
+    uploadExamMutation.mutate(data, {
+      onSuccess: () => {
+        setIsCreateModalOpen(false);
+      }
+    });
+  };
+
+  // Dynamic stats calculation
+  const sentTodayCount = exams.filter((e) => {
+    const createdDate = new Date(e.created);
+    const today = new Date();
+    return createdDate.toDateString() === today.toDateString();
+  }).length;
+
+  const processingCount = exams.filter((e) => e.status === 'PROCESSING').length;
+  const readyCount = exams.filter((e) => e.status === 'DONE').length;
+  const errorCount = exams.filter((e) => e.status === 'ERROR').length;
+
   const stats = [
-    { label: 'Enviados hoje', value: '24', color: CORAL, icon: <UploadFileIcon sx={{ fontSize: 18 }} /> },
-    { label: 'Processando', value: '7', color: '#2563eb', icon: <RefreshIcon sx={{ fontSize: 18 }} /> },
-    { label: 'Prontos para laudo', value: '11', color: '#059669', icon: <CheckCircleIcon sx={{ fontSize: 18 }} /> },
-    { label: 'Erros de envio', value: '2', color: '#dc2626', icon: <ErrorIcon sx={{ fontSize: 18 }} /> },
+    { label: 'Enviados hoje', value: String(sentTodayCount), color: CORAL, icon: <UploadFileIcon sx={{ fontSize: 18 }} /> },
+    { label: 'Processando', value: String(processingCount), color: '#2563eb', icon: <RefreshIcon sx={{ fontSize: 18 }} /> },
+    { label: 'Prontos para laudo', value: String(readyCount), color: '#059669', icon: <CheckCircleIcon sx={{ fontSize: 18 }} /> },
+    { label: 'Erros de envio', value: String(errorCount), color: '#dc2626', icon: <ErrorIcon sx={{ fontSize: 18 }} /> },
   ];
+
+  const filteredExams = exams.filter((ex) =>
+    parseFileName(ex.fileName).toLowerCase().includes(search.toLowerCase()) ||
+    ex.fileName.toLowerCase().includes(search.toLowerCase())
+  );
+
 
   return (
     <Box sx={{ height: '100vh', bgcolor: BG, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -245,93 +289,142 @@ export default function DashboardAttendant() {
             </Box>
 
             {/* Table headers */}
-            <Box sx={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 1fr', px: 3, py: 1.2, bgcolor: '#f9fafb', borderBottom: '1px solid #f3f4f6', flexShrink: 0 }}>
-              {['Paciente', 'Exame / Tipo', 'Data Envio', 'Fila Status'].map((h) => (
+            <Box sx={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1.2fr 1fr', px: 3, py: 1.2, bgcolor: '#f9fafb', borderBottom: '1px solid #f3f4f6', flexShrink: 0 }}>
+              {['Exame / Arquivo', 'ID do Exame', 'Data de Envio', 'Status da Fila'].map((h) => (
                 <Typography key={h} sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</Typography>
               ))}
             </Box>
 
             {/* Table body (Scrollable) */}
             <Box sx={{ flex: 1, overflowY: 'auto', px: 0 }}>
-              {EXAMS.map((ex, i) => (
-                <Box
-                  key={ex.id}
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: '2fr 1.5fr 1fr 1fr',
-                    px: 3,
-                    py: 1.8,
-                    alignItems: 'center',
-                    borderBottom: i < EXAMS.length - 1 ? '1px solid #f3f4f6' : 'none',
-                    '&:hover': { bgcolor: '#fafafa' },
-                    transition: 'background 0.1s',
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <Avatar src={ex.avatar} sx={{ width: 28, height: 28 }} />
+              {isLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                  <CircularProgress size={30} sx={{ color: CORAL }} />
+                </Box>
+              ) : filteredExams.length === 0 ? (
+                <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#9ca3af', p: 3 }}>
+                  <UploadFileIcon sx={{ fontSize: 40, mb: 1.5, color: '#cbd5e1' }} />
+                  <Typography sx={{ fontSize: '0.82rem', fontWeight: 500 }}>Nenhum exame enviado ainda</Typography>
+                </Box>
+              ) : (
+                filteredExams.map((ex, i) => (
+                  <Box
+                    key={ex.id}
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: '2fr 1fr 1.2fr 1fr',
+                      px: 3,
+                      py: 1.8,
+                      alignItems: 'center',
+                      borderBottom: i < filteredExams.length - 1 ? '1px solid #f3f4f6' : 'none',
+                      '&:hover': { bgcolor: '#fafafa' },
+                      transition: 'background 0.1s',
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Avatar sx={{ width: 28, height: 28, bgcolor: 'rgba(224,90,71,0.08)', color: CORAL, fontSize: '0.75rem', fontWeight: 700 }}>
+                        {ex.fileName.charAt(0).toUpperCase()}
+                      </Avatar>
+                      <Box sx={{ overflow: 'hidden' }}>
+                        <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: DARK, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                          {parseFileName(ex.fileName)}
+                        </Typography>
+                        <Typography sx={{ fontSize: '0.65rem', color: '#9ca3af' }}>{ex.fileName}</Typography>
+                      </Box>
+                    </Box>
+                    <Typography sx={{ fontSize: '0.72rem', color: '#6b7280', fontFamily: 'monospace' }}>
+                      #{ex.id.substring(0, 8)}
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <CalendarIcon sx={{ fontSize: 12, color: '#9ca3af' }} />
+                      <Box>
+                        <Typography sx={{ fontSize: '0.75rem', color: '#374151', fontWeight: 500 }}>
+                          {new Date(ex.created).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                        </Typography>
+                        <Typography sx={{ fontSize: '0.62rem', color: '#9ca3af' }}>
+                          {new Date(ex.created).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </Typography>
+                      </Box>
+                    </Box>
                     <Box>
-                      <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: DARK }}>{ex.patient}</Typography>
-                      <Typography sx={{ fontSize: '0.65rem', color: '#9ca3af' }}>{ex.id}</Typography>
+                      <StatusChip status={ex.status} />
                     </Box>
                   </Box>
-                  <Typography sx={{ fontSize: '0.8rem', color: '#374151', fontWeight: 500 }}>{ex.type}</Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <CalendarIcon sx={{ fontSize: 12, color: '#9ca3af' }} />
-                    <Typography sx={{ fontSize: '0.75rem', color: '#6b7280' }}>{ex.date}</Typography>
-                  </Box>
-                  <Box>
-                    <StatusChip status={ex.status} />
-                  </Box>
-                </Box>
-              ))}
+                ))
+              )}
             </Box>
           </Card>
 
           {/* Right sidebar */}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, minHeight: 0 }}>
-            {/* Drag & drop upload area */}
-            <Card sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: `2px dashed rgba(224,90,71,0.25)`, bgcolor: 'rgba(224,90,71,0.01)', cursor: 'pointer', transition: 'all 0.2s', '&:hover': { bgcolor: 'rgba(224,90,71,0.03)', borderColor: CORAL } }}>
+
+            {/* Click to register card */}
+            <Card 
+              onClick={handleOpenCreateModal}
+              sx={{ 
+                flex: 1, 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                border: `2px dashed rgba(224,90,71,0.25)`, 
+                bgcolor: uploadExamMutation.isPending ? 'rgba(0, 0, 0, 0.02)' : 'rgba(224,90,71,0.01)', 
+                cursor: uploadExamMutation.isPending ? 'default' : 'pointer', 
+                transition: 'all 0.2s', 
+                '&:hover': uploadExamMutation.isPending ? {} : { bgcolor: 'rgba(224,90,71,0.03)', borderColor: CORAL } 
+              }}
+            >
               <Box sx={{ width: 48, height: 48, borderRadius: '12px', bgcolor: `${CORAL}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
-                <CloudUploadIcon sx={{ fontSize: 24, color: CORAL }} />
+                {uploadExamMutation.isPending ? (
+                  <CircularProgress size={24} sx={{ color: CORAL }} />
+                ) : (
+                  <CloudUploadIcon sx={{ fontSize: 24, color: CORAL }} />
+                )}
               </Box>
-              <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: DARK, mb: 0.5 }}>Upload de Exame</Typography>
-              <Typography sx={{ fontSize: '0.75rem', color: '#6b7280', textAlign: 'center', mb: 2, maxWidth: 200, lineHeight: 1.5 }}>
-                Arraste arquivos DICOM/PDF ou selecione do computador.
+              <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: DARK, mb: 0.5 }}>
+                {uploadExamMutation.isPending ? 'Enviando...' : 'Cadastrar Exame'}
               </Typography>
-              <Button variant="contained"
-                sx={{ bgcolor: CORAL, color: '#fff', borderRadius: '10px', textTransform: 'none', fontWeight: 700, fontSize: '0.8rem', px: 2.5, py: 1, boxShadow: '0 4px 12px rgba(224,90,71,0.2)', '&:hover': { bgcolor: '#c84937' } }}>
-                Selecionar arquivo
+              <Typography sx={{ fontSize: '0.75rem', color: '#6b7280', textAlign: 'center', mb: 2, maxWidth: 200, lineHeight: 1.5 }}>
+                {uploadExamMutation.isPending 
+                  ? 'Cadastrando o exame e iniciando o processamento na fila da IA.'
+                  : 'Informe os dados de identificação do exame para processamento.'
+                }
+              </Typography>
+              <Button 
+                variant="contained"
+                disabled={uploadExamMutation.isPending}
+                sx={{ 
+                  bgcolor: CORAL, 
+                  color: '#fff', 
+                  borderRadius: '10px', 
+                  textTransform: 'none', 
+                  fontWeight: 700, 
+                  fontSize: '0.8rem', 
+                  px: 2.5, 
+                  py: 1, 
+                  boxShadow: '0 4px 12px rgba(224,90,71,0.2)', 
+                  '&:hover': { bgcolor: '#c84937' } 
+                }}
+              >
+                Cadastrar Novo
               </Button>
             </Card>
 
             {/* Current processing pipeline status */}
-            <Card sx={{ p: 2.5, flexShrink: 0 }}>
-              <Typography sx={{ fontWeight: 800, fontSize: '0.85rem', color: DARK, mb: 2 }}>Fila de Processamento (IA)</Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.8 }}>
-                {[
-                  { name: 'Carlos M. Jr.', type: 'Ressonância #4820', progress: 62 },
-                  { name: 'Beatriz F.',    type: 'Tomografia #4815',  progress: 89 },
-                ].map((item) => (
-                  <Box key={item.name}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                      <Box>
-                        <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: DARK }}>{item.name}</Typography>
-                        <Typography sx={{ fontSize: '0.65rem', color: '#9ca3af' }}>{item.type}</Typography>
-                      </Box>
-                      <Typography sx={{ fontSize: '0.78rem', fontWeight: 700, color: '#2563eb' }}>{item.progress}%</Typography>
-                    </Box>
-                    <LinearProgress variant="determinate" value={item.progress}
-                      sx={{ height: 4, borderRadius: '99px', bgcolor: '#eff6ff', '& .MuiLinearProgress-bar': { bgcolor: '#2563eb', borderRadius: '99px' } }}
-                    />
-                  </Box>
-                ))}
-              </Box>
-            </Card>
+            
           </Box>
 
         </Box>
 
       </Box>
+
+      {/* ── DIALOG DE CADASTRO DE EXAME ──────────────────────────────── */}
+      <ModalCreate
+        open={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSubmit={handleCreateExam}
+        isPending={uploadExamMutation.isPending}
+      />
     </Box>
   );
 }

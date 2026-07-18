@@ -11,6 +11,11 @@ export interface ExamDto {
 
 export interface UploadExamRequest {
   fileName: string;
+  id?: string;
+  status?: ExamStatus;
+  processingResult?: string | null;
+  report?: string | null;
+  created?: string;
 }
 
 export interface SubmitReportRequest {
