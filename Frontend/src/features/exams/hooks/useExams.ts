@@ -14,7 +14,7 @@ export function useExamsQuery() {
       const hasPendingOrProcessing = exams?.some(
         (exam) => exam.status === 'PENDING' || exam.status === 'PROCESSING'
       );
-      return hasPendingOrProcessing ? 3000 : false;
+      return hasPendingOrProcessing ? 4000 : false;
     },
   });
 }

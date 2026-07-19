@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
@@ -48,6 +49,8 @@ public static class ServiceCollectionExtensions
             .AddCheck<RabbitMQHealthCheck>("RabbitMQ");
 
         // JWT Authentication
+        JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
+
         var jwtKey = configuration["Jwt:Key"]
                      ?? throw new InvalidOperationException("Jwt:Key não configurado.");
 
