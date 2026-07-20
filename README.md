@@ -82,8 +82,8 @@ Coisas que num sistema hospitalar real existiriam e aqui não foram implementada
 - Tratamento de arquivos pesados em nuvem e visualizador universal DICOM/PACS.
 - Assinatura digital do CFM validada (ICP-Brasil).
 - Refresh Tokens e HttpOnly.
-- Criptografia profunda para segurança de dados da saúde (adequação total a LGPD/HIPAA).
-O processo assíncrono em si, em vez de passar por algoritmos profundos e salvar um arquivo real, simula um delay seguro para refletir a transição de estado da fila.
+- Criptografia das informações dos laudos
+Não se passa por uma real análise, e sim uma simulação com um delay, para mostrar como funcionaria o fluxo.
 
 ---
 
