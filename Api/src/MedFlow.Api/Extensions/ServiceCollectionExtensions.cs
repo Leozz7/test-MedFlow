@@ -67,7 +67,7 @@ public static class ServiceCollectionExtensions
                     ValidAudience = configuration["Jwt:Audience"],
                     ValidateLifetime = true,
                     ClockSkew = TimeSpan.Zero,
-                    RoleClaimType = "role",
+                    RoleClaimType = System.Security.Claims.ClaimTypes.Role,
                     NameClaimType = "sub"
                 };
 

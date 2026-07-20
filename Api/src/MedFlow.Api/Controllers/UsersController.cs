@@ -12,7 +12,7 @@ namespace MedFlow.Api.Controllers;
 public class UsersController : ApiControllerBase
 {
     [HttpGet]
-    // [Authorize(Roles = "Admin, ATTENDANT")]
+    [Authorize(Roles = "ATTENDANT")]
     public async Task<IActionResult> GetUsers(CancellationToken cancellationToken)
     {
         var result = await Sender.Send(new GetUsersQuery(), cancellationToken);
@@ -48,7 +48,7 @@ public class UsersController : ApiControllerBase
     }
 
     [HttpDelete("{id}")]
-    // [Authorize]
+    [Authorize]
     public async Task<IActionResult> DeleteUser(Guid id, CancellationToken cancellationToken)
     {
         await Sender.Send(new DeleteUserCommand(id), cancellationToken);

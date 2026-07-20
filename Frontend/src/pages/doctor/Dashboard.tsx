@@ -3,7 +3,6 @@ import {
   Box,
   Typography,
   Avatar,
-  IconButton,
   Button,
   Divider,
   Menu,
@@ -18,7 +17,6 @@ import {
 } from '@mui/material';
 import {
   MedicalServices as MedicalServicesIcon,
-  Notifications as NotificationsIcon,
   Search as SearchIcon,
   CheckCircle as CheckCircleIcon,
   Assignment as AssignmentIcon,
@@ -138,12 +136,6 @@ export default function DashboardDoctor() {
 
         {/* Right actions */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <Box sx={{ position: 'relative' }}>
-            <IconButton sx={{ bgcolor: '#f9fafb', border: '1.5px solid #e8eaed', borderRadius: '12px', p: 0.8 }}>
-              <NotificationsIcon sx={{ fontSize: 18, color: '#374151' }} />
-            </IconButton>
-            <Box sx={{ position: 'absolute', top: 5, right: 5, width: 6, height: 6, borderRadius: '50%', bgcolor: CORAL, border: '1.5px solid #fff' }} />
-          </Box>
           <Box 
             onClick={handleOpenMenu}
             sx={{ display: 'flex', alignItems: 'center', gap: 1.2, cursor: 'pointer', p: 0.5, borderRadius: '8px', '&:hover': { bgcolor: '#f3f4f6' }, transition: 'background-color 0.2s' }}
