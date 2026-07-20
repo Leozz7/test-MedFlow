@@ -8,9 +8,7 @@ import {
   IconButton,
   InputAdornment,
   Alert,
-  CircularProgress,
-  Checkbox,
-  FormControlLabel
+  CircularProgress
 } from '@mui/material';
 import {
   Email as EmailIcon,
@@ -30,7 +28,6 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -318,18 +315,6 @@ export default function LoginPage() {
           }}
         />
 
-        {/* Remember me */}
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
-              sx={{ color: '#d1d5db', '&.Mui-checked': { color: '#e05a47' }, p: 0.75 }}
-            />
-          }
-          label={<Typography sx={{ fontSize: '0.84rem', fontWeight: 500, color: '#4b5563' }}>Lembrar meu acesso</Typography>}
-          sx={{ mb: 3, ml: -0.5 }}
-        />
 
         {/* Submit */}
         <Button
