@@ -1,32 +1,43 @@
-# React + TypeScript + Vite
+# MedFlow Web (Frontend)
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Cliente SPA (Single Page Application) do sistema MedFlow.
 
-Currently, two official plugins are available:
+## Tecnologias
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- React 18 e TypeScript
+- Vite
+- Material UI (MUI)
+- React Router
+- React Hook Form e Zod
+- Axios
 
-## React Compiler
+## Estrutura de Diretórios
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- `src/components/`: Componentes visuais genéricos e reutilizáveis
+- `src/pages/`: Telas agrupadas por contexto (doctor, attendant, auth)
+- `src/services/`: Configuração do Axios e abstração de requisições
+- `src/routes/`: Roteamento e Guards de autenticação
+- `src/utils/`: Funções utilitárias
 
-## Expanding the Oxlint configuration
+## Autenticação e Segurança
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+- Utilização de JWT gerenciado no `localStorage`.
+- Interceptors do Axios para injeção automática de header `Authorization` e tratamento global de erros HTTP 401.
+- Role-Based Routing através de PrivateRoutes, protegendo telas de acordo com a permissão (ATTENDANT ou DOCTOR).
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
+## Execução Local (Standalone)
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Para rodar o frontend isoladamente, fora do Docker:
+
+1. Instale as dependências:
+   ```bash
+   npm install
+   ```
+
+2. Inicie o servidor:
+   ```bash
+   npm run dev
+   ```
+
+3. Acesse em `http://localhost:5173`. 
+*(Lembre-se de rodar a API localmente na porta 8080).*
