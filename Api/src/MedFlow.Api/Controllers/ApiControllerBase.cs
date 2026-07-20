@@ -6,6 +6,8 @@ namespace MedFlow.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+[ProducesResponseType(StatusCodes.Status403Forbidden)]
 public abstract class ApiControllerBase : ControllerBase
 {
     private ISender? _sender;
