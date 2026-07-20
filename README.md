@@ -82,8 +82,9 @@ Coisas que num sistema hospitalar real existiriam e aqui não foram implementada
 - Tratamento de arquivos pesados em nuvem e visualizador universal DICOM/PACS.
 - Assinatura digital do CFM validada (ICP-Brasil).
 - Refresh Tokens e HttpOnly.
-- Criptografia das informações dos laudos
-Não se passa por uma real análise, e sim uma simulação com um delay, para mostrar como funcionaria o fluxo.
+- Criptografia das informações dos laudos.
+- Não se passa por uma real análise, e sim uma simulação com um delay, para mostrar como funcionaria o fluxo.
+
 
 ---
 
