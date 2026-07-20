@@ -64,17 +64,6 @@ services:
         condition: service_healthy
       seq:
         condition: service_started
-
-  seq:
-    image: datalust/seq:latest
-    container_name: medflow-seq
-    environment:
-      - ACCEPT_EULA=Y
-      - SEQ_FIRSTRUN_NOAUTHENTICATION=true
-    ports:
-      - "8082:80"      # Interface web
-      - "5341:5341"    # Ingestão de logs HTTP
-
     develop:
       watch:
         - action: rebuild
@@ -86,6 +75,16 @@ services:
             - src/*/bin/
             - src/*/obj/
 
+  seq:
+    image: datalust/seq:latest
+    container_name: medflow-seq
+    environment:
+      - ACCEPT_EULA=Y
+      - SEQ_FIRSTRUN_NOAUTHENTICATION=true
+    ports:
+      - "8082:80"      # Interface web
+      - "5341:5341"    # Ingestão de logs HTTP
+
   web:
     image: medflow-web:latest
     build:
@@ -96,6 +95,13 @@ services:
       - "3000:80"
     depends_on:
       - api
+    develop:
+      watch:
+        - action: rebuild
+          path: ./Frontend
+          ignore:
+            - node_modules/
+            - dist/
 
 volumes:
   postgres_data:
