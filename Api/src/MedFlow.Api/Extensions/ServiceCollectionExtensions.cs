@@ -145,15 +145,25 @@ public static class ServiceCollectionExtensions
     {
         var permitLimit = configuration.GetValue<int>("RateLimiting:PermitLimit", 100);
         var windowMinutes = configuration.GetValue<int>("RateLimiting:WindowInMinutes", 1);
+        var queueLimit = configuration.GetValue<int>("RateLimiting:QueueLimit", 0);
+
+        var authPermitLimit = configuration.GetValue<int>("RateLimiting:AuthPermitLimit", 10);
+        var authWindowMinutes = configuration.GetValue<int>("RateLimiting:AuthWindowInMinutes", 1);
+
+        var uploadPermitLimit = configuration.GetValue<int>("RateLimiting:UploadPermitLimit", 20);
+        var uploadWindowMinutes = configuration.GetValue<int>("RateLimiting:UploadWindowInMinutes", 1);
 
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             options.OnRejected = async (context, token) =>
             {
+                context.HttpContext.Response.Headers.RetryAfter = "60";
                 await context.HttpContext.Response.WriteAsJsonAsync(new
                 {
                     type = "rate_limit_exceeded",
+                    title = "Too Many Requests",
+                    status = StatusCodes.Status429TooManyRequests,
                     message = "Limite de requisições excedido. Tente novamente mais tarde.",
                     retryAfter = $"{windowMinutes} minute",
                     path = context.HttpContext.Request.Path.ToString()
@@ -167,7 +177,27 @@ public static class ServiceCollectionExtensions
                     {
                         PermitLimit = permitLimit,
                         Window = TimeSpan.FromMinutes(windowMinutes),
-                        QueueLimit = configuration.GetValue<int>("RateLimiting:QueueLimit", 0)
+                        QueueLimit = queueLimit
+                    }));
+
+            options.AddPolicy("auth", context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "fallback",
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = authPermitLimit,
+                        Window = TimeSpan.FromMinutes(authWindowMinutes),
+                        QueueLimit = 0
+                    }));
+
+            options.AddPolicy("upload", context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "fallback",
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = uploadPermitLimit,
+                        Window = TimeSpan.FromMinutes(uploadWindowMinutes),
+                        QueueLimit = 0
                     }));
         });
 

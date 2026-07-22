@@ -6,6 +6,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using MedFlow.Domain.Enums;
 using MedFlow.Application.Features.Exams.Commands.UploadExam;
 using MedFlow.Application.Features.Exams.Commands.EmitReport;
@@ -17,6 +18,7 @@ public class ExamsController : ApiControllerBase
 {
     [HttpPost("upload")]
     [Authorize(Roles = "ATTENDANT")]
+    [EnableRateLimiting("upload")]
     public async Task<IActionResult> UploadExam([FromBody] UploadExamCommand command, CancellationToken cancellationToken)
     {
         var result = await Sender.Send(command, cancellationToken);

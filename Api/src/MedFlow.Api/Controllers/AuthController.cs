@@ -2,10 +2,12 @@ using MedFlow.Application.Features.Users.Commands.Login;
 using MedFlow.Application.Features.Users.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace MedFlow.Api.Controllers;
 
 [Route("api/auth")]
+[EnableRateLimiting("auth")]
 public class AuthController : ApiControllerBase
 {
     /// <summary>
@@ -17,6 +19,7 @@ public class AuthController : ApiControllerBase
     [ProducesResponseType(typeof(LoginResponseDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> Login(
         [FromBody] LoginRequest request,
         CancellationToken cancellationToken)
