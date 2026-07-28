@@ -1,0 +1,91 @@
+name: CI / CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  backend-test:
+    name: Backend Tests & Build (.NET)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore Api/src/MedFlow.Api/MedFlow.Api.csproj
+
+      - name: Build solution
+        run: dotnet build Api/src/MedFlow.Api/MedFlow.Api.csproj --no-restore -c Release
+
+      - name: Run Unit Tests
+        run: dotnet test Api/src/MedFlow.Tests/MedFlow.Tests.csproj --verbosity normal
+
+  frontend-test:
+    name: Frontend Quality & Build (React/Vite)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./Frontend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: Frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Linter
+        run: npm run lint
+
+      - name: Build Web Application
+        run: npm run build
+
+  containers-build:
+    name: Docker Containers Build
+    needs: [backend-test, frontend-test]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: actions/setup-buildx-action@v3
+
+      - name: Build Backend API Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./Api
+          file: ./Api/Dockerfile
+          push: false
+          tags: medflow-api:ci
+
+      - name: Build Frontend Web Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./Frontend
+          file: ./Frontend/Dockerfile
+          push: false
+          tags: medflow-web:ci
+
+      - name: Validate Docker Compose Configuration
+        run: docker compose config

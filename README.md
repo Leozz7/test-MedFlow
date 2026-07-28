@@ -89,6 +89,16 @@ O processo assíncrono em si, em vez de passar por algoritmos profundos e salvar
 
 ---
 
+## CI/CD e Validação Automatizada (GitHub Actions)
+
+O repositório conta com uma pipeline automatizada de CI/CD configurada via GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) executada a cada `push` e `pull request` nas branches `main` e `develop`:
+
+1. **Backend CI (`.NET 10`):** Compilação da API e execução de 100% da suíte de **105 testes unitários** automatizados (`dotnet test`).
+2. **Frontend CI (`Node 22 / React`):** Instalação de dependências, checagem estática com linter e compilação de produção (`npm run build`).
+3. **Containers CI (`Docker & Compose`):** Validação e build das imagens Docker (`medflow-api` e `medflow-web`) e checagem de sintaxe do `docker-compose.yml`.
+
+---
+
 ## Testes e Regras Gerais
 
 Para consultar as especificações originais e regras de negócio do desafio técnico, as anotações continuam disponíveis em [`teste.md`](teste.md).
