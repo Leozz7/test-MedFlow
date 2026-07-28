@@ -29,8 +29,6 @@ Para testar a entrada primária, logue com:
 - **Senha:** `AdminPassword123!`
 - **Role:** `ATTENDANT`
 
-*(Novos usuários são cadastrados apenas pelo swagger).*
-
 ---
 
 ## O fluxo
@@ -62,6 +60,10 @@ O backend é organizado utilizando a **Clean Architecture** e **CQRS com MediatR
 As requisições inválidas nem chegam nos handlers elas são barradas no **Pipeline Behavior do MediatR**, que valida automaticamente e cospe os erros com Bad Request.
 
 ---
+
+# Por que não utilizei o AutoMapper?
+
+Não utilizei o AutoMapper para evitar acoplamento e dependência entre as camadas. Além disso, a lógica de mapeamento dos objetos era muito simples, tem apenas 2 entidades, então não justificava a utilização do AutoMapper. Lógico, se fosse um projeto maior e com mais entidades o ideal seria utilizar o Automapper.
 
 ## Por que do RabbitMQ e do Background Service?
 
